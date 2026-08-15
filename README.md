@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VIALII
 
-## Getting Started
+Plataforma de viajes con IA: descubrimiento de destinos, comparación de transporte, armado de paquetes (vuelo + hotel + actividades) y seguimiento del viaje.
 
-First, run the development server:
+## Stack real
+
+- **Framework:** Next.js 16.3 (App Router, Turbopack), React 19, TypeScript (strict)
+- **Estilos:** Tailwind CSS v4 (config CSS-first vía `@theme` en `app/globals.css`)
+- **Datos:** Supabase (Postgres) — el proyecto en `.env.local` no es uno real aún; todo lo que toca Supabase cae automáticamente a un almacenamiento local (`localStorage`) cuando no hay conectividad (ver "Patrón Supabase-first" abajo)
+- **IA:** Anthropic API (`claude-sonnet-5`), llamada solo server-side desde `app/api/ai/recommendations`
+- **Transporte real:** vuelos vía RapidAPI (Kiwi.com) con fallback automático a datos mock; buses y trenes son 100% mock (no hay proveedor real integrado todavía)
+- **Auth:** implementación propia (`lib/auth/authContext.tsx`), no NextAuth
+- **Pagos:** no hay integración real (Stripe u otro) — `/checkout` es una demo explícita que no cobra nada
+
+No hay test runner configurado (`npm test` no existe) ni Stripe/NextAuth/Sentry en el código — si ves esas menciones en documentación vieja, están desactualizadas.
+
+## Empezar en local
 
 ```bash
+npm install
+cp .env.example .env.local   # y completa los valores reales
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Ver [`.env.example`](.env.example) para la lista completa y qué hace cada una. Resumen:
 
-## Learn More
+| Variable | Requerida | Qué pasa si falta |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | La app no arranca — `lib/db/client.ts` lanza en el import |
+| `ANTHROPIC_API_KEY` | Para `/discover` y `/api/ai/recommendations` | Esas rutas fallan; el resto de la app funciona igual |
+| `NEXT_PUBLIC_ADMIN_EMAILS` | No | Nadie puede entrar a `/admin` |
+| `RAPIDAPI_KEY` / `USE_REAL_APIS` | No | Vuelos usan datos mock |
+| `LOG_LEVEL` | No | Por defecto `warn` en producción, `debug` en dev |
 
-To learn more about Next.js, take a look at the following resources:
+## Patrón "Supabase-first, fallback local"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Casi todo lo que lee/escribe datos de usuario (auth, viajes guardados, comentarios, alertas de precio) intenta Supabase primero y cae a `localStorage` solo cuando Supabase es realmente inalcanzable a nivel de red — no ante errores de credenciales o validación. Ver `lib/utils/supabaseCircuit.ts` y el comentario en `lib/auth/authContext.tsx` para el detalle. Esto significa que **hoy, sin credenciales reales de Supabase, la app funciona igual pero cada usuario solo ve sus propios datos en su propio navegador** — nada se comparte entre dispositivos ni persiste en un backend real.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura del proyecto
 
-## Deploy on Vercel
+```
+app/            Next.js App Router — páginas y API routes (app/api/*)
+components/     Componentes React, organizados por feature
+lib/
+  services/     Lógica de negocio
+  providers/    Integraciones de transporte/hotel/actividad (mock + reales)
+  db/           Cliente Supabase y queries
+  auth/         Contexto de autenticación
+  currency/     Contexto de multimoneda
+  logger.ts     Logging centralizado
+types/, lib/types/   Tipos TypeScript (ver nota abajo)
+constants/      Datos estáticos (destinos, intereses, etc.)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+> **Nota:** existen dos módulos `domain.ts` (`types/domain.ts` y `lib/types/domain.ts`) con esquemas *distintos e incompatibles* — el primero sirve al flujo de Discover, el segundo al flujo de Search. Es deuda técnica conocida, no un archivo duplicado por error; revisa cuál importar según la feature en la que trabajes.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+```bash
+npm run dev      # servidor de desarrollo
+npm run build    # build de producción
+npm run start    # sirve el build de producción
+npm run lint     # ESLint
+npx tsc --noEmit --strict   # chequeo de tipos
+```
+
+## Deploy
+
+Ver [`DEPLOYMENT.md`](DEPLOYMENT.md) para el checklist completo de producción.

@@ -1,26 +1,138 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Enables the `dark:` variant based on a `.dark` class on <html>, toggled by ThemeToggle */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-@media (prefers-color-scheme: dark) {
+  /* Brand palette — documented reference for the values already in use
+     throughout the app via Tailwind's blue/cyan/pink/emerald/amber classes
+     (these hexes ARE those Tailwind steps: blue-600/cyan-500/pink-500/
+     emerald-500/amber-500). Centralized here so new UI has one place to
+     check instead of guessing a shade. */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --brand-primary: #2563eb;
+    --brand-secondary: #06b6d4;
+    --brand-accent: #ec4899;
+    --brand-success: #10b981;
+    --brand-highlight: #f59e0b;
+  }
+
+  /* Fixed categorical colors for cost-breakdown bars (CostBreakdown.tsx).
+     Validated colorblind-safe adjacent order — keep this sequence. */
+  :root {
+    --cost-transport: #2a78d6;
+    --cost-hotels: #eb6834;
+    --cost-activities: #1baf7a;
+    --cost-meals: #eda100;
+    --price-line: #2a78d6;
+  }
+
+  .dark {
+    --cost-transport: #3987e5;
+    --cost-hotels: #d95926;
+    --cost-activities: #199e70;
+    --cost-meals: #c98500;
+    --price-line: #3987e5;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-slate-50 via-white to-slate-50 text-slate-900 transition-colors duration-200;
+    @apply dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100;
+  }
+
+  h1 {
+    @apply text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+
+  p {
+    @apply leading-relaxed text-slate-600 dark:text-slate-400;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .gradient-primary {
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    @apply backdrop-blur-xl bg-white/80 border border-white/20;
+  }
+
+  /* Youthful violet/pink mood tint for the home hero (app/page.tsx) — sits
+     over the hero photo, under the bottom dark-fade used for text contrast. */
+  .hero-overlay {
+    background: linear-gradient(
+      135deg,
+      rgba(139, 92, 246, 0.3) 0%,
+      rgba(236, 72, 153, 0.2) 100%
+    );
+  }
+
+  .shadow-lg-custom {
+    @apply shadow-2xl shadow-slate-900/10;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(2, 132, 199, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(2, 132, 199, 0.6);
+  }
 }
