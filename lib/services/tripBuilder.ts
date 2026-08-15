@@ -241,3 +241,36 @@ export async function generateTripPackage(
     activityAlternatives,
   }
 }
+
+// ============================================
+// JSON revival — both generator functions above now run server-side, behind
+// app/api/trips/plan and app/api/trips/itinerary (moved there so client
+// components stop instantiating MockHotelProvider/MockActivityProvider
+// directly, per the Travel Engine refactor's Section 2 rule: frontend only
+// ever talks to VIALII's own API, never to a provider). `Date` fields
+// survive `JSON.stringify` as ISO strings, so callers that fetch these
+// routes need to revive them back into real `Date` objects to match what
+// this module's return types promise — that's all these two functions do.
+// ============================================
+
+function reviveSearchResult(result: SearchResult): SearchResult {
+  return { ...result, departure: new Date(result.departure), arrival: new Date(result.arrival) }
+}
+
+/** Revives a `CompleteTrip` fetched as JSON from `POST /api/trips/plan` back into the shape `generateTripPackage` actually returns. */
+export function reviveCompleteTrip(trip: CompleteTrip): CompleteTrip {
+  return {
+    ...trip,
+    transport: reviveSearchResult(trip.transport),
+    transportAlternatives: trip.transportAlternatives?.map(reviveSearchResult),
+  }
+}
+
+/** Revives a `TripItinerary` fetched as JSON from `POST /api/trips/itinerary` back into the shape `generateTripItinerary` actually returns. */
+export function reviveTripItinerary(trip: TripItinerary): TripItinerary {
+  return {
+    ...trip,
+    startDate: new Date(trip.startDate),
+    days: trip.days.map((day) => ({ ...day, date: new Date(day.date) })),
+  }
+}

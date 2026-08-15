@@ -15,6 +15,13 @@ interface KiwiFlight {
 }
 
 export class RealFlightProvider {
+  // 10s, shorter than the Duffel adapter's 20s (lib/travel-engine/flights/DuffelFlightProvider.ts)
+  // — this is the secondary/legacy flight source in the Travel Engine's provider chain, and
+  // RapidAPI has historically responded fast (including the 402 seen elsewhere in this file).
+  // Without this, a hung request had no cap of its own and could block an orchestrated search
+  // indefinitely (Fase 2 audit — every other provider already has one).
+  private readonly requestTimeoutMs = 10_000
+
   async search(params: FlightSearchParams): Promise<SearchResult[]> {
     try {
       const fromIata = this.getCityIATA(params.origin)
@@ -23,13 +30,21 @@ export class RealFlightProvider {
 
       const url = `https://kiwi-com-cheap-flights.p.rapidapi.com/round-trip?fly_from=${fromIata}&fly_to=${toIata}&departure_date=${dateStr}&adults=${params.passengers}&limit=10`
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
-          'x-rapidapi-host': 'kiwi-com-cheap-flights.p.rapidapi.com'
-        }
-      })
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs)
+      let response: Response
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
+            'x-rapidapi-host': 'kiwi-com-cheap-flights.p.rapidapi.com'
+          },
+          signal: controller.signal
+        })
+      } finally {
+        clearTimeout(timeoutId)
+      }
 
       // Falls back to mock flights below on ANY failure path (bad response,
       // no data, thrown error) — same "try real, degrade to mock" pattern

@@ -10,7 +10,7 @@ import DayItinerary from '@/components/trip/DayItinerary'
 import SocialActions from '@/components/common/SocialActions'
 import CommentSection from '@/components/trip/CommentSection'
 import { FEATURED_DESTINATIONS } from '@/constants/destinations'
-import { generateTripItinerary, type TripItinerary, type TripTransportSummary } from '@/lib/services/tripBuilder'
+import { reviveTripItinerary, type TripItinerary, type TripTransportSummary } from '@/lib/services/tripBuilder'
 import { getSavedCount } from '@/lib/services/savedTripsService'
 import { getComments } from '@/lib/services/commentService'
 import type { HotelOption } from '@/lib/providers/hotel/types'
@@ -49,15 +49,23 @@ export default function TripPage({ params }: TripPageProps) {
 
   useEffect(() => {
     let cancelled = false
-    const load = () => {
+    const load = async () => {
       setLoading(true)
-      generateTripItinerary(destination, DEFAULT_START_DATE, DEFAULT_DURATION, MOCK_TRANSPORT).then((result) => {
-        if (cancelled) return
-        setTrip(result)
-        setSelectedDay(result.days[0]?.dayNumber)
-        setSelectedHotel(result.hotels[0])
-        setLoading(false)
+      // Calls VIALII's own API instead of building the itinerary locally —
+      // the hotel/activity providers this needs now run server-side, inside
+      // POST /api/trips/itinerary, never in the browser bundle (Section 2).
+      const response = await fetch('/api/trips/itinerary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination, startDate: DEFAULT_START_DATE, duration: DEFAULT_DURATION, transport: MOCK_TRANSPORT }),
       })
+      const body = await response.json()
+      if (cancelled || !body.success) return
+      const result = reviveTripItinerary(body.data)
+      setTrip(result)
+      setSelectedDay(result.days[0]?.dayNumber)
+      setSelectedHotel(result.hotels[0])
+      setLoading(false)
     }
     load()
 

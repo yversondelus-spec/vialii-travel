@@ -36,26 +36,28 @@ export default function Home() {
     <div>
       <StickySearchBar />
 
-      {/* ══════════════ LIFESTYLE INSPIRATION (curated, see each component's own comment on why there are no fake stats/testimonials) ══════════════ */}
       <HeroInspiration />
+
+      {/* SEARCH MODES — moved right after the hero (was buried below the lifestyle
+          sections, which meant real scrolling before reaching the actual form —
+          see conversation history for why). StickySearchBar (above) still scrolls
+          here for anyone who scrolls past it into the sections below. */}
+      <section id="search-form" className="relative z-20 px-4 -mt-10 sm:-mt-12 mb-16 scroll-mt-24">
+        <div className="max-w-xl mx-auto">
+          <TravelSearchForm onSearch={(resolution) => router.push(buildSearchUrl(resolution))} />
+        </div>
+      </section>
+
+      {/* ══════════════ LIFESTYLE INSPIRATION (curated, see each component's own comment on why there are no fake stats/testimonials) ══════════════ */}
       <InspirationSection />
       <CommunityGallerySection />
 
       <div className="text-center py-10">
         <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent mb-4" />
         <p className="text-slate-500 dark:text-slate-400 text-sm font-semibold uppercase tracking-widest">
-          O explora destinos y arma tu viaje
+          O explora destinos por región
         </p>
       </div>
-
-      {/* ══════════════ TRADITIONAL SEARCH & DISCOVERY (existing) ══════════════ */}
-
-      {/* SEARCH MODES — StickySearchBar (above) scrolls here */}
-      <section id="search-form" className="relative z-20 px-4 mb-16 scroll-mt-24">
-        <div className="max-w-xl mx-auto">
-          <TravelSearchForm onSearch={(resolution) => router.push(buildSearchUrl(resolution))} />
-        </div>
-      </section>
 
       {/* INSPIRATIONAL FEED PREVIEW */}
       <section className="py-4 sm:py-8">

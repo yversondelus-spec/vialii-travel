@@ -12,6 +12,8 @@ This reflects the actual state of the codebase as of this pass, not an aspiratio
 - [ ] `ANTHROPIC_API_KEY` set (server env, never `NEXT_PUBLIC_*`)
 - [ ] `NEXT_PUBLIC_ADMIN_EMAILS` set to real admin addresses
 - [ ] Confirm the RapidAPI (Kiwi flights) subscription is active if you want real flight data — as of this pass it was returning 402 Payment Required, so flights are silently serving mock data (graceful, but worth knowing before launch)
+- [ ] Optional: `DUFFEL_API_KEY` + `FLIGHTS_DUFFEL_ENABLED=true` to turn on the Duffel flight provider (see [PROVIDERS.md](PROVIDERS.md)) — left disabled by default, this repo has never made a live call to Duffel
+- [ ] `npm test` (Vitest) — 0 failures
 - [ ] Custom domain DNS pointed at the hosting provider
 
 ## Deploy (Vercel)
@@ -25,6 +27,7 @@ vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
 vercel env add ANTHROPIC_API_KEY production
 vercel env add NEXT_PUBLIC_ADMIN_EMAILS production
 vercel env add RAPIDAPI_KEY production        # optional
+vercel env add DUFFEL_API_KEY production      # optional — see PROVIDERS.md
 vercel env add LOG_LEVEL production           # optional, defaults to "warn"
 
 vercel deploy --prod
@@ -49,4 +52,8 @@ These are real, and none of them are something a lint pass fixes. They're listed
 4. **No real payments.** `/checkout` explicitly says "demo" on the page and charges nothing. Going live with paid plans means integrating a real processor (Stripe or similar) — that's new scope, not a hardening fix.
 5. **No error-tracking service wired up.** `lib/logger.ts` centralizes logging and exposes `setErrorSink()` for exactly this, but nothing calls it yet — errors reach the console and a local ring buffer, not an external dashboard. Wire up Sentry (or similar) by calling `setErrorSink` once at startup with a real client if/when you want off-browser visibility.
 6. **No rate limiting** on `/api/search` or `/api/ai/recommendations`. Both now validate their input shape, but neither throttles by IP/user. Adding real rate limiting needs a shared store (Upstash Redis is the common Vercel-friendly choice) — a business decision (which provider, what limits) as much as a code one.
-7. **Two incompatible `domain.ts` type modules** (`types/domain.ts` vs `lib/types/domain.ts`) serving the Discover and Search flows respectively — see the README note. Not a bug today (nothing imports the wrong one), but a real foot-gun for future changes; worth a deliberate rename pass when there's room for it.
+7. **Three incompatible normalized data models** (`types/domain.ts`, `lib/types/domain.ts`, and now `lib/travel-engine/core/models.ts`) — see [ARCHITECTURE.md](ARCHITECTURE.md#three-normalized-data-models--deliberately-not-by-accident). Not a bug today (nothing imports the wrong one), but a real foot-gun for future changes; worth a deliberate unification pass when there's room for it.
+8. **Duffel has never made a live call.** `DuffelFlightProvider` is written and unit-tested against fixtures matching Duffel's documented API schema (including a Fase 2 audit pass that fixed two real bugs in the order flow — invented passenger ids, hardcoded order status — found by re-reading the code, not by a live call), but this environment has no `DUFFEL_API_KEY`. Before enabling it in production: get a real key, re-verify the field names in `PROVIDERS.md` against Duffel's current docs, and test a real search/order/cancel cycle in Duffel's test mode first.
+9. **Bus/train never got a Travel Engine adapter.** `/api/search` (used by `/search`) still talks to the pre-existing mock bus/train providers directly — there's no real aggregator for either to wrap.
+10. **Provider observability is in-memory only.** `lib/travel-engine/core/observability.ts`'s call log doesn't survive across serverless instances on Vercel — see [ARCHITECTURE.md](ARCHITECTURE.md#observability-and-cost). Fine for local debugging, not real production observability yet.
+11. **No real search cache.** Every `FlightOffer`/`HotelOffer`/`ActivityOffer` carries a `meta.cached` field, but it's hardcoded `false` everywhere — no caching layer has been built yet (Section 16 of the original brief, not implemented in either pass so far).

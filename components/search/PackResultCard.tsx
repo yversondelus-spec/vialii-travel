@@ -9,7 +9,7 @@ import SaveTripButton from '@/components/trip/SaveTripButton'
 import PriceAlertButton from '@/components/trip/PriceAlertButton'
 import ModularPackBuilder from '@/components/trip/ModularPackBuilder'
 import { FEATURED_DESTINATIONS } from '@/constants/destinations'
-import { generateTripPackage } from '@/lib/services/tripBuilder'
+import { reviveCompleteTrip } from '@/lib/services/tripBuilder'
 import type { CompleteTrip } from '@/lib/types/trip'
 import type { OptionScore } from '@/lib/types/domain'
 import type { SearchResult } from '@/lib/providers/transport/types'
@@ -68,11 +68,18 @@ export default function PackResultCard({
 
   useEffect(() => {
     let cancelled = false
-    const load = () => {
+    const load = async () => {
       setTrip(null)
-      generateTripPackage(destination, startDate, endDate, transport, budget, interests, attractions, allTransportOptions).then((result) => {
-        if (!cancelled) setTrip(result)
+      // Calls VIALII's own API instead of building the pack locally — the
+      // hotel/activity providers this needs now run server-side, inside
+      // POST /api/trips/plan, never in the browser bundle (Section 2).
+      const response = await fetch('/api/trips/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination, startDate, endDate, transport, budget, interests, attractions, allTransportOptions }),
       })
+      const body = await response.json()
+      if (!cancelled && body.success) setTrip(reviveCompleteTrip(body.data))
     }
     load()
     return () => {
