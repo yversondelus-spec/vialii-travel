@@ -39,7 +39,6 @@ function randomPricePerNight(): number {
 
 export class MockHotelProvider implements HotelProvider {
   async searchHotels(params: HotelSearchParams): Promise<HotelOption[]> {
-    await new Promise((resolve) => setTimeout(resolve, 300))
 
     const key = params.destination.trim().toLowerCase()
     const neighborhoods = NEIGHBORHOODS[key] ?? GENERIC_NEIGHBORHOODS

@@ -28,7 +28,6 @@ const slugify = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'
 
 export class MockActivityProvider implements ActivityProvider {
   async searchActivities(params: ActivitySearchParams): Promise<Activity[]> {
-    await new Promise((resolve) => setTimeout(resolve, 400))
 
     const destination = params.destination
     const slug = slugify(destination)
