@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { FEATURED_DESTINATIONS } from '@/constants/destinations'
 import { MapPin, Calendar, Users, DollarSign, Sparkles, Wand2, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { INTERESTS, type Interest } from '@/constants/interests'
@@ -168,6 +169,7 @@ export default function TravelSearchForm({ onSearch, isLoading, initial, classNa
         <input
           id="tsf-destination"
           type="text"
+          list="tsf-destination-options"
           value={destination}
           onChange={(e) => {
             setDestination(e.target.value)
@@ -177,6 +179,14 @@ export default function TravelSearchForm({ onSearch, isLoading, initial, classNa
           placeholder="Ej: París, Buenos Aires, Puerto Varas..."
           className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-slate-50 dark:disabled:bg-slate-800/50"
         />
+        {/* Sugerencias del catalogo, sin bloquear texto libre: el campo sigue
+            aceptando cualquier ciudad, pero escribir "Lim" ya ofrece "Lima" en
+            vez de dejar que se envie "LIima" y la busqueda vuelva sin vuelos. */}
+        <datalist id="tsf-destination-options">
+          {FEATURED_DESTINATIONS.map((d) => (
+            <option key={d.id} value={d.name} />
+          ))}
+        </datalist>
         <button
           type="button"
           onClick={() => setRecommendMe((v) => !v)}

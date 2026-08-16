@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useCurrency } from '@/lib/currency/currencyContext'
@@ -10,17 +10,22 @@ import type { CurrencyCode } from '@/lib/types/currency'
 const POPULAR = SUPPORTED_CURRENCIES.filter((c) => c.popular)
 const OTHERS = SUPPORTED_CURRENCIES.filter((c) => !c.popular)
 
+// El servidor no puede leer localStorage, asi que renderiza DEFAULT_CURRENCY
+// mientras el cliente ya conoce la moneda guardada — dos textos distintos para
+// el mismo nodo, que es lo que React reporta como hydration mismatch.
+// `useSyncExternalStore` es la API que React da para esto: el tercer argumento
+// es el snapshot del servidor (false) y el segundo el del cliente (true).
+// Definidos fuera del componente para que las referencias sean estables.
+const subscribeNoop = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
+
 export function CurrencySelector({ className }: { className?: string }) {
   const { currency, currencyInfo, setCurrency } = useCurrency()
   const [open, setOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  // El servidor no puede leer localStorage, asi que renderiza DEFAULT_CURRENCY
-  // mientras el cliente ya conoce la moneda guardada — dos textos distintos
-  // para el mismo nodo, que es exactamente lo que React reporta como hydration
-  // mismatch. Se muestra el codigo solo despues del primer render del cliente.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(subscribeNoop, getClientSnapshot, getServerSnapshot)
 
   useEffect(() => {
     if (!open) return
@@ -46,7 +51,8 @@ export function CurrencySelector({ className }: { className?: string }) {
         title="Cambiar moneda"
         className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
       >
-        <span>{currencyInfo.code}</span>
+        {/* `invisible` en vez de vacio: reserva el ancho y evita que el header salte al hidratar. */}
+        <span className={cn(!mounted && 'invisible')}>{mounted ? currencyInfo.code : 'USD'}</span>
         <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
