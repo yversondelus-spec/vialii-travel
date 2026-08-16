@@ -15,6 +15,12 @@ export function CurrencySelector({ className }: { className?: string }) {
   const [open, setOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  // El servidor no puede leer localStorage, asi que renderiza DEFAULT_CURRENCY
+  // mientras el cliente ya conoce la moneda guardada — dos textos distintos
+  // para el mismo nodo, que es exactamente lo que React reporta como hydration
+  // mismatch. Se muestra el codigo solo despues del primer render del cliente.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     if (!open) return
