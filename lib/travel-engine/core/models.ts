@@ -88,6 +88,14 @@ export interface FlightOffer {
   fareConditions?: string
   refundable?: boolean
   changeable?: boolean
+  /**
+   * Cuantos pasajeros cubre esta oferta. El proveedor fija este numero al
+   * crear el offer request y la orden debe enviar exactamente esa cantidad
+   * (ver el "passenger count mismatch" que valida DuffelFlightProvider). Se
+   * expone el conteo, no los ids del proveedor: el checkout necesita saber
+   * cuantos formularios renderizar sin conocer la forma interna de Duffel.
+   */
+  passengerCount?: number
   /** Public search/booking link — used by providers with no order API of their own (Kiwi, mock). */
   deepLink?: string
   /** Set once an order exists against this offer (Duffel-style providers only). */

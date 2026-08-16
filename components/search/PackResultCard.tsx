@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Plane, Bus, TrainFront, Ticket, CalendarDays } from 'lucide-react'
 import { Badge } from '@/components/common/Badge'
 import { Button } from '@/components/common/Button'
@@ -10,6 +11,7 @@ import PriceAlertButton from '@/components/trip/PriceAlertButton'
 import ModularPackBuilder from '@/components/trip/ModularPackBuilder'
 import { FEATURED_DESTINATIONS } from '@/constants/destinations'
 import { reviveCompleteTrip } from '@/lib/services/tripBuilder'
+import { bookableOfferFrom } from '@/lib/travel-engine/flights/offerFromSearchResult'
 import type { CompleteTrip } from '@/lib/types/trip'
 import type { OptionScore } from '@/lib/types/domain'
 import type { SearchResult } from '@/lib/providers/transport/types'
@@ -95,6 +97,9 @@ export default function PackResultCard({
   const headerPhoto = destinationPhoto ?? meta.photo
   const durationDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1)
   const tripId = savedTripIdPrefix ? `${savedTripIdPrefix}:${transport.id}` : transport.id
+  // Solo las ofertas de un provider con flujo de orden real (hoy Duffel)
+  // llevan al booking propio; el resto mantiene el flujo anterior.
+  const bookable = bookableOfferFrom(transport)
 
   return (
     <>
@@ -159,14 +164,26 @@ export default function PackResultCard({
 
             {/* CTA row */}
             <div className="flex items-center gap-1.5 mt-3">
-              <Button size="sm" className="flex-1 text-xs px-2" disabled={!trip} onClick={() => setExpanded(true)}>
-                Ver itinerario completo
+              <Button size="sm" variant={bookable ? 'secondary' : 'primary'} className="flex-1 text-xs px-2" disabled={!trip} onClick={() => setExpanded(true)}>
+                Ver itinerario
               </Button>
               <SaveTripButton tripId={tripId} tripData={trip ?? transport} className="h-8 w-8 shrink-0" />
               {origin && (
                 <PriceAlertButton origin={origin} destination={destination} suggestedMaxPrice={transport.price} className="h-8 w-8 shrink-0" />
               )}
             </div>
+
+            {/* Reserva real — solo para providers que implementan createOrder */}
+            {bookable && (
+              <Link
+                href={`/flights/book?offerId=${encodeURIComponent(bookable.offerId)}&provider=${encodeURIComponent(bookable.provider)}`}
+                className="mt-1.5 block"
+              >
+                <Button size="sm" fullWidth className="text-xs px-2">
+                  Reservar vuelo
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -449,6 +449,7 @@ export function duffelOfferToFlightOffer(offer: DuffelOffer, params?: FlightSear
     fareConditions: describeConditions(offer.conditions),
     refundable: offer.conditions?.refund_before_departure?.allowed,
     changeable: offer.conditions?.change_before_departure?.allowed,
+    passengerCount: offer.passengers?.length,
     meta: { provider: 'duffel', cached: false, fetchedAt: new Date().toISOString() },
     raw: offer,
   }
