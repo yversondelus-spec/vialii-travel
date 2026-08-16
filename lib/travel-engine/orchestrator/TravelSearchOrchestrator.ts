@@ -1,4 +1,4 @@
-import { getEnabledFlightProviders } from '../flights'
+import { getEnabledFlightProviders, type FlightProvider } from '../flights'
 import { dedupeFlightOffers } from './dedupe'
 import { rankFlightOffers, type RankedFlightOffer, type RankingPriority } from './rank'
 import { InvalidSearchParamsError, isProviderError, type TravelEngineErrorCode } from '../core/errors'
@@ -53,37 +53,63 @@ function validateFlightSearch(request: FlightSearchRequest): void {
  * provider failures, normalizes (each adapter already did this), dedupes,
  * and ranks. Nothing about Duffel/Kiwi/Amadeus leaks past this class — API
  * routes and the AI layer only ever see `FlightSearchResponse`.
+ *
+ * `mock` is deliberately NOT part of that parallel fan-out. config.ts calls it
+ * a "guaranteed fallback", but querying it alongside the real providers and
+ * merging the results made demo flights compete with real Duffel offers in the
+ * same ranking — and the demo ones won, because they advertise amenities the
+ * score rewards ('Wifi', 'Food') that a real provider never attests to. It now
+ * runs only when the real providers returned nothing, which is what "fallback"
+ * meant in the first place.
  */
 export class TravelSearchOrchestrator {
   async searchFlights(request: FlightSearchRequest): Promise<FlightSearchResponse> {
     validateFlightSearch(request)
 
     const start = Date.now()
-    const providers = getEnabledFlightProviders()
+    const allProviders = getEnabledFlightProviders()
+    const realProviders = allProviders.filter((p) => p.id !== 'mock')
+    const mockProvider = allProviders.find((p) => p.id === 'mock')
 
-    const providersQueried = providers.map((p) => p.id)
+    const providersQueried: string[] = []
     const providersFailed: ProviderFailure[] = []
-
-    const settled = await Promise.allSettled(providers.map((provider) => provider.searchFlights(request)))
-
     const allOffers: FlightOffer[] = []
-    settled.forEach((result, index) => {
-      const provider = providers[index]
-      if (result.status === 'fulfilled') {
-        allOffers.push(...result.value)
-        return
-      }
 
-      const reason = result.reason
-      const failure: ProviderFailure = {
-        provider: provider.id,
-        operation: 'searchFlights',
-        errorCode: isProviderError(reason) ? reason.code : 'unknown_error',
-        message: reason instanceof Error ? reason.message : String(reason),
-      }
-      providersFailed.push(failure)
-      logger.warn('Flight provider failed during orchestrated search', { ...failure })
-    })
+    const runProviders = async (providers: FlightProvider[]): Promise<void> => {
+      if (providers.length === 0) return
+      providersQueried.push(...providers.map((p) => p.id))
+
+      const settled = await Promise.allSettled(providers.map((provider) => provider.searchFlights(request)))
+
+      settled.forEach((result, index) => {
+        const provider = providers[index]
+        if (result.status === 'fulfilled') {
+          allOffers.push(...result.value)
+          return
+        }
+
+        const reason = result.reason
+        const failure: ProviderFailure = {
+          provider: provider.id,
+          operation: 'searchFlights',
+          errorCode: isProviderError(reason) ? reason.code : 'unknown_error',
+          message: reason instanceof Error ? reason.message : String(reason),
+        }
+        providersFailed.push(failure)
+        logger.warn('Flight provider failed during orchestrated search', { ...failure })
+      })
+    }
+
+    await runProviders(realProviders)
+
+    const usedMockFallback = allOffers.length === 0 && mockProvider !== undefined
+    if (usedMockFallback) {
+      logger.warn('No real flight provider returned offers — falling back to demo data', {
+        realProvidersQueried: realProviders.map((p) => p.id),
+        realProvidersFailed: providersFailed.map((f) => f.provider),
+      })
+      await runProviders([mockProvider])
+    }
 
     const { offers: deduped, alternatives: duplicateAlternatives } = dedupeFlightOffers(allOffers)
     const ranked = rankFlightOffers(deduped, { maxBudget: request.maxBudget, priority: request.priority })
@@ -100,7 +126,10 @@ export class TravelSearchOrchestrator {
       providersFailed,
       tookMs: Date.now() - start,
       cached: false,
-      mode: getTravelEngineMode(),
+      // Serving only demo data is `mock`, even when a real provider is
+      // configured — reporting `live` alongside invented flights is exactly
+      // the "datos simulados presentados como reales" this engine must avoid.
+      mode: usedMockFallback ? 'mock' : getTravelEngineMode(),
       ranked,
       recommended: ranked[0],
       duplicateAlternatives,
