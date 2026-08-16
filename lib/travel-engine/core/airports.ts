@@ -35,7 +35,27 @@ const CITY_TO_IATA: Record<string, string> = {
   'rapa nui': 'IPC',
   castro: 'MHC',
   chiloe: 'MHC',
-
+  
+// Ciudades sin aeropuerto comercial propio -> hub mas cercano. La
+  // geolocalizacion por IP suele caer en comunas pequeñas; sin esto la
+  // busqueda nunca ofrece vuelos y el usuario no entiende por que.
+  mulchen: 'CCP',      // ~100 km de Concepcion
+  chillan: 'CCP',
+  talca: 'SCL',
+  curico: 'SCL',
+  rancagua: 'SCL',
+  'san fernando': 'SCL',
+  linares: 'SCL',
+  quillota: 'SCL',
+  'san antonio': 'SCL',
+  melipilla: 'SCL',
+  ovalle: 'LSC',
+  vallenar: 'CPO',
+  angol: 'ZCO',
+  victoria: 'ZCO',
+  'puerto varas': 'PMC',
+  frutillar: 'PMC',
+  ancud: 'MHC',
   // Latinoamérica
   'buenos aires': 'EZE',
   mendoza: 'MDZ',

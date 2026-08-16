@@ -70,7 +70,13 @@ function buildSeedItems(): FeedItem[] {
       const primaryVibe = vibes[i % Math.max(vibes.length, 1)]
 
       items.push({
-        id: seedKey,
+        // El indice va aparte de `seedKey`: la semilla debe seguir dependiendo
+        // solo de destino+duracion para que los datos generados sean estables
+        // entre renders, pero DURATIONS puede repetir un valor y entonces dos
+        // items del mismo destino compartian id. React descarta las keys
+        // duplicadas, asi que esos items no llegaban a renderizarse (se veia
+        // como items faltantes en /feed, /explore y el home).
+        id: `${seedKey}-${i}`,
         destinationId: destination.id,
         destinationName: destination.name,
         country: destination.country,

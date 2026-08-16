@@ -63,11 +63,19 @@ export class TransportAggregator {
 
     try {
       const departureDate = new Date(query.travel_date).toISOString().split('T')[0]
+      // El formulario pide ida y vuelta, pero hasta ahora solo se enviaba la
+      // ida: el usuario veia un precio de solo ida presentado como el costo
+      // del viaje completo. DuffelFlightProvider ya arma la segunda slice
+      // cuando recibe returnDate (ver su linea ~158).
+      const returnDate = query.return_date
+        ? new Date(query.return_date).toISOString().split('T')[0]
+        : undefined
 
       const result = await this.orchestrator.searchFlights({
         origin,
         destination,
         departureDate,
+        returnDate,
         passengers: { adults: query.num_passengers },
         cabinClass: 'economy',
         currency: TARGET_CURRENCY,
@@ -77,6 +85,8 @@ export class TransportAggregator {
         logger.debug('El engine no devolvió vuelos', {
           origin,
           destination,
+          departureDate,
+          returnDate,
           mode: result.mode,
           resultCode: result.resultCode,
         })
@@ -88,6 +98,8 @@ export class TransportAggregator {
       logger.debug('Vuelos obtenidos del Travel Engine', {
         origin,
         destination,
+        departureDate,
+        returnDate,
         count: result.offers.length,
         mode: result.mode,
       })
